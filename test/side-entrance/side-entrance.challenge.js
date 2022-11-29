@@ -23,6 +23,13 @@ describe('[Challenge] Side entrance', function () {
         ).to.equal(ETHER_IN_POOL);
     });
 
+    // ------------------------------------------ EXPLOIT ------------------------------------------
+    // 1. Call 'flashLoan()'
+    // 2. Lending pool calls 'execute()' in the receiver contract and sends ETH
+    // 3. Receiver contract deposits ETH from flash loan back into the lending pool by calling 'deposit()'
+    // 4. 'flashLoan()' call is complete with 'balances' mapping updated as a result of the last step
+    // 5. Receiver contract calls 'withdraw()' to drain the ETH in the lending pool 
+    // ---------------------------------------------------------------------------------------------
     it('Exploit', async function () {
         const SideEntranceExploit = await ethers.getContractFactory('SideEntranceExploit', deployer);
         this.exploit = await SideEntranceExploit.deploy();

