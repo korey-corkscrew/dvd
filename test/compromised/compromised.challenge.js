@@ -59,8 +59,12 @@ describe('Compromised challenge', function () {
         this.nftToken = await DamnValuableNFTFactory.attach(await this.exchange.token());
     });
 
+    // ------------------------------------------ EXPLOIT ------------------------------------------
+    // 1. 
+    // ---------------------------------------------------------------------------------------------
     it('Exploit', async function () {        
         /** CODE YOUR EXPLOIT HERE */
+        console.log(Number.parseInt(await this.oracle.getMedianPrice("DVNFT")));
     });
 
     after(async function () {
