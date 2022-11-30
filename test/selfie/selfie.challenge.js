@@ -29,6 +29,16 @@ describe('[Challenge] Selfie', function () {
         ).to.be.equal(TOKENS_IN_POOL);
     });
 
+    // ------------------------------------------ EXPLOIT ------------------------------------------
+    // 1. Call 'flashLoan()' in lending pool
+    // 2. Lending pool calls 'receiveTokens()' in the receiver contract and sends DVT
+    // 3. Receiver contract now has the majority of DVT and calls 'snapshot()'
+    // 4. Receiver contract now passes the '_hasEnoughVotes()' check in the governance contract
+    // 5. Receiver contract calls 'queueAction()' in governance contract with call data that will
+    //    call 'drainAllFunds()'
+    // 6. After goverance time delay has passed, receiver contract calls 'executeAction()' in governance
+    //    contract to obtain all the DVT 
+    // ---------------------------------------------------------------------------------------------
     it('Exploit', async function () {
         const SelfieExploit = await ethers.getContractFactory('SelfieExploit', deployer);
         this.exploit = await SelfieExploit.deploy(this.pool.address, this.governance.address);
