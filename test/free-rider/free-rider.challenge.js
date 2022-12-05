@@ -121,8 +121,8 @@ describe('[Challenge] Free Rider', function () {
         await this.exploit.connect(attacker).exploit(
             this.uniswapPair.address, 
             this.marketplace.address, 
-            this.buyerContract.address)
-        ;
+            this.buyerContract.address
+        );
     });
 
     after(async function () {
